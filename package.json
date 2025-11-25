@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "name": "booking-app",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently -n \"server,client\" -c \"green,blue\" \"cd server && bun run dev\" \"cd client && bun run dev\"",
+    "start": "concurrently -n \"server,client\" -c \"green,blue\" \"cd server && bun run start\" \"cd client && bun run dev\""
+  },
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
