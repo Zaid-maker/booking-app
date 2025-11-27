@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 function ImageCarousel({ images, alt }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -11,19 +11,20 @@ function ImageCarousel({ images, alt }) {
     );
   }
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  };
+  }, [images.length]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  };
+  }, [images.length]);
 
   return (
     <div className="relative w-full h-96 bg-gray-900 rounded-lg overflow-hidden group">
       <img
         src={images[currentIndex]}
         alt={`${alt} ${currentIndex + 1}`}
+        loading="lazy"
         className="w-full h-full object-cover"
       />
 

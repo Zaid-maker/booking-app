@@ -1,6 +1,7 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 
-function PropertyCard({ property }) {
+const PropertyCard = memo(({ property }) => {
   return (
     <Link
       to={`/property/${property._id}`}
@@ -11,6 +12,7 @@ function PropertyCard({ property }) {
         <img
           src={property.images?.[0] || 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800'}
           alt={property.name}
+          loading="lazy"
           className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
         />
         
@@ -109,6 +111,8 @@ function PropertyCard({ property }) {
       </div>
     </Link>
   );
-}
+});
+
+PropertyCard.displayName = 'PropertyCard';
 
 export default PropertyCard;

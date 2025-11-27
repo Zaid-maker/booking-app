@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 import PropertyCard from '../components/PropertyCard';
@@ -8,11 +8,7 @@ function Home() {
   const [featuredProperties, setFeaturedProperties] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchFeaturedProperties();
-  }, []);
-
-  const fetchFeaturedProperties = async () => {
+  const fetchFeaturedProperties = useCallback(async () => {
     try {
       const data = await propertiesAPI.getAll({ featured: true });
       setFeaturedProperties(data.properties || []);
@@ -21,7 +17,11 @@ function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchFeaturedProperties();
+  }, [fetchFeaturedProperties]);
 
   return (
     <div className="min-h-screen">
@@ -30,7 +30,7 @@ function Home() {
         className="relative bg-cover bg-center h-[calc(100vh-5rem)] min-h-[600px] flex items-center"
         style={{
           backgroundImage:
-            'url(https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600)',
+            'url(https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600&q=75)',
         }}
       >
         {/* Animated Gradient Overlay */}
