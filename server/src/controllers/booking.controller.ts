@@ -68,6 +68,7 @@ export const getUserBookings = async (c: Context) => {
   try {
     const userId = c.get('userId');
     const { status } = c.req.query();
+    const Review = (await import('../models/Review')).default;
 
     let query: any = { user: userId };
     if (status) {
@@ -78,9 +79,20 @@ export const getUserBookings = async (c: Context) => {
       .populate('property', 'name location images price')
       .sort({ createdAt: -1 });
 
+    // Check if each booking has been reviewed
+    const bookingsWithReviewStatus = await Promise.all(
+      bookings.map(async (booking) => {
+        const review = await Review.findOne({ booking: booking._id });
+        return {
+          ...booking.toObject(),
+          hasReview: !!review,
+        };
+      })
+    );
+
     return c.json({
-      count: bookings.length,
-      bookings,
+      count: bookingsWithReviewStatus.length,
+      bookings: bookingsWithReviewStatus,
     });
   } catch (error: any) {
     console.error('Get bookings error:', error);

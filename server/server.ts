@@ -6,6 +6,8 @@ import connectDB from './src/utils/db';
 import authRoutes from './src/routes/auth.routes';
 import propertyRoutes from './src/routes/property.routes';
 import bookingRoutes from './src/routes/booking.routes';
+import reviewRoutes from './src/routes/review.routes';
+import paymentRoutes from './src/routes/payment.routes';
 
 // Initialize Hono app
 const app = new Hono();
@@ -33,6 +35,8 @@ app.get('/', (c) => {
 app.route('/api/auth', authRoutes);
 app.route('/api/properties', propertyRoutes);
 app.route('/api/bookings', bookingRoutes);
+app.route('/api/reviews', reviewRoutes);
+app.route('/api/payments', paymentRoutes);
 
 // 404 handler
 app.notFound((c) => {

@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { propertiesAPI, bookingsAPI } from '../utils/api';
+import { propertiesAPI, bookingsAPI, reviewsAPI, paymentsAPI } from '../utils/api';
 import { toast } from '../utils/toast';
 import ImageCarousel from '../components/ImageCarousel';
+import ReviewCard from '../components/ReviewCard';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import PaymentModal from '../components/PaymentModal';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder');
 
 function PropertyDetail() {
   const { id } = useParams();
@@ -12,6 +18,11 @@ function PropertyDetail() {
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [reviewStats, setReviewStats] = useState(null);
+  const [clientSecret, setClientSecret] = useState('');
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [bookingData, setBookingData] = useState({
     checkIn: '',
     checkOut: '',
@@ -20,6 +31,7 @@ function PropertyDetail() {
 
   useEffect(() => {
     fetchProperty();
+    fetchReviews();
   }, [id]);
 
   const fetchProperty = async () => {
@@ -32,6 +44,19 @@ function PropertyDetail() {
       toast.error('Failed to load property details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      const data = await reviewsAPI.getPropertyReviews(id);
+      setReviews(data.reviews || []);
+      setReviewStats(data.stats);
+    } catch (error) {
+      console.error('Failed to fetch reviews:', error);
+    } finally {
+      setReviewsLoading(false);
     }
   };
 
@@ -98,7 +123,7 @@ function PropertyDetail() {
     try {
       setBookingLoading(true);
       await bookingsAPI.create({
-        property: id,
+        propertyId: id,
         checkIn: bookingData.checkIn,
         checkOut: bookingData.checkOut,
         guests: Number(bookingData.guests),
@@ -310,6 +335,66 @@ function PropertyDetail() {
                 ))}
               </div>
             </div>
+
+            {/* Reviews Section */}
+            <div className="bg-white rounded-2xl shadow-xl p-8 scale-in">
+              <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center">
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center mr-3">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                </div>
+                Reviews {reviewStats && `(${reviewStats.total})`}
+              </h2>
+
+              {reviewStats && reviewStats.total > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-gray-900">{reviewStats.avgRating.toFixed(1)}</div>
+                    <div className="text-sm text-gray-600">Overall</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-gray-900">{reviewStats.avgCleanliness.toFixed(1)}</div>
+                    <div className="text-sm text-gray-600">Cleanliness</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-gray-900">{reviewStats.avgAccuracy.toFixed(1)}</div>
+                    <div className="text-sm text-gray-600">Accuracy</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-gray-900">{reviewStats.avgCheckIn.toFixed(1)}</div>
+                    <div className="text-sm text-gray-600">Check-in</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-gray-900">{reviewStats.avgCommunication.toFixed(1)}</div>
+                    <div className="text-sm text-gray-600">Communication</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-gray-900">{reviewStats.avgLocation.toFixed(1)}</div>
+                    <div className="text-sm text-gray-600">Location</div>
+                  </div>
+                </div>
+              )}
+
+              {reviewsLoading ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-purple-200 border-t-purple-600"></div>
+                </div>
+              ) : reviews.length > 0 ? (
+                <div className="space-y-6">
+                  {reviews.map((review) => (
+                    <ReviewCard key={review._id} review={review} onUpdate={fetchReviews} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <p className="text-gray-600">No reviews yet. Be the first to review!</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Booking Card */}
@@ -333,119 +418,137 @@ function PropertyDetail() {
               </div>
 
               <form onSubmit={handleBooking} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Check-in
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                {property.type === 'sale' ? (
+                  <div>
+                    <div className="text-lg text-gray-700 mb-6">
+                      This property is for sale. Purchase it now to make it yours!
                     </div>
-                    <input
-                      type="date"
-                      name="checkIn"
-                      value={bookingData.checkIn}
-                      onChange={handleBookingChange}
-                      min={new Date().toISOString().split('T')[0]}
-                      required
-                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Check-out
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <input
-                      type="date"
-                      name="checkOut"
-                      value={bookingData.checkOut}
-                      onChange={handleBookingChange}
-                      min={bookingData.checkIn || new Date().toISOString().split('T')[0]}
-                      required
-                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Guests
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                    <select
-                      name="guests"
-                      value={bookingData.guests}
-                      onChange={handleBookingChange}
-                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all appearance-none bg-white"
+                    <button
+                      type="button"
+                      onClick={handleBuyNow}
+                      disabled={bookingLoading}
+                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all font-bold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                     >
-                      {[...Array(property.guests)].map((_, i) => (
-                        <option key={i + 1} value={i + 1}>
-                          {i + 1} {i === 0 ? 'Guest' : 'Guests'}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
+                      {bookingLoading ? 'Processing...' : 'Buy Now'}
+                    </button>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">
+                        Check-in
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="date"
+                          name="checkIn"
+                          value={bookingData.checkIn}
+                          onChange={handleBookingChange}
+                          min={new Date().toISOString().split('T')[0]}
+                          required
+                          className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                        />
+                      </div>
+                    </div>
 
-                {nights > 0 && (
-                  <div className="border-t border-b border-gray-200 py-4 space-y-3">
-                    <div className="flex justify-between text-gray-700">
-                      <span>
-                        ${property.price} × {nights} {nights === 1 ? 'night' : 'nights'}
-                      </span>
-                      <span className="font-semibold">${totalPrice.toLocaleString()}</span>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">
+                        Check-out
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="date"
+                          name="checkOut"
+                          value={bookingData.checkOut}
+                          onChange={handleBookingChange}
+                          min={bookingData.checkIn || new Date().toISOString().split('T')[0]}
+                          required
+                          className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                        />
+                      </div>
                     </div>
-                    <div className="flex justify-between text-xl font-bold">
-                      <span className="text-gray-900">Total</span>
-                      <span className="bg-linear-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                        ${totalPrice.toLocaleString()}
-                      </span>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">
+                        Guests
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                        <select
+                          name="guests"
+                          value={bookingData.guests}
+                          onChange={handleBookingChange}
+                          className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all appearance-none bg-white"
+                        >
+                          {[...Array(property.guests)].map((_, i) => (
+                            <option key={i + 1} value={i + 1}>
+                              {i + 1} {i === 0 ? 'Guest' : 'Guests'}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+
+                    {nights > 0 && (
+                      <div className="border-t border-b border-gray-200 py-4 space-y-3">
+                        <div className="flex justify-between text-gray-700">
+                          <span>
+                            ${property.price} × {nights} {nights === 1 ? 'night' : 'nights'}
+                          </span>
+                          <span className="font-semibold">${totalPrice.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-xl font-bold">
+                          <span className="text-gray-900">Total</span>
+                          <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                            ${totalPrice.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={bookingLoading}
+                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all font-bold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    >
+                      {bookingLoading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Reserve Now
+                        </>
+                      )}
+                    </button>
+                  </>
                 )}
-
-                <button
-                  type="submit"
-                  disabled={bookingLoading}
-                  className="w-full bg-linear-to-r from-purple-600 to-blue-600 text-white py-4 rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all font-bold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                  {bookingLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Reserve Now
-                    </>
-                  )}
-                </button>
 
                 {!isAuthenticated && (
                   <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start">
@@ -466,6 +569,19 @@ function PropertyDetail() {
           </div>
         </div>
       </div>
+      {clientSecret && (
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
+          <PaymentModal
+            isOpen={isPaymentModalOpen}
+            onClose={() => setIsPaymentModalOpen(false)}
+            amount={property.price}
+            onSuccess={(paymentIntent) => {
+              console.log('Payment success:', paymentIntent);
+              // Optionally redirect or show success message
+            }}
+          />
+        </Elements>
+      )}
     </div>
   );
 }

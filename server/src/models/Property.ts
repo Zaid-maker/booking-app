@@ -15,6 +15,7 @@ export interface IProperty extends Document {
   reviews: number;
   featured: boolean;
   available: boolean;
+  type: 'rent' | 'sale';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -91,6 +92,11 @@ const propertySchema = new Schema<IProperty>(
       type: Boolean,
       default: true,
     },
+    type: {
+      type: String,
+      enum: ['rent', 'sale'],
+      default: 'rent',
+    },
   },
   {
     timestamps: true,
@@ -98,6 +104,6 @@ const propertySchema = new Schema<IProperty>(
 );
 
 // Index for search and filtering
-propertySchema.index({ location: 1, price: 1, rating: -1 });
+propertySchema.index({ location: 1, price: 1, rating: -1, type: 1 });
 
 export default mongoose.model<IProperty>('Property', propertySchema);

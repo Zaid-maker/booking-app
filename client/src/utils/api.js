@@ -101,3 +101,49 @@ export const bookingsAPI = {
       method: 'PATCH',
     }),
 };
+
+// Reviews API
+export const reviewsAPI = {
+  create: (reviewData) =>
+    apiRequest('/reviews', {
+      method: 'POST',
+      body: JSON.stringify(reviewData),
+    }),
+
+  getPropertyReviews: (propertyId, params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/reviews/property/${propertyId}${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getUserReviews: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/reviews/my-reviews${queryString ? `?${queryString}` : ''}`);
+  },
+
+  canReview: (bookingId) => apiRequest(`/reviews/can-review/${bookingId}`),
+
+  update: (reviewId, reviewData) =>
+    apiRequest(`/reviews/${reviewId}`, {
+      method: 'PUT',
+      body: JSON.stringify(reviewData),
+    }),
+
+  delete: (reviewId) =>
+    apiRequest(`/reviews/${reviewId}`, {
+      method: 'DELETE',
+    }),
+
+  toggleHelpful: (reviewId) =>
+    apiRequest(`/reviews/${reviewId}/helpful`, {
+      method: 'POST',
+    }),
+};
+
+// Payments API
+export const paymentsAPI = {
+  createPaymentIntent: (propertyId) =>
+    apiRequest('/payments/create-payment-intent', {
+      method: 'POST',
+      body: JSON.stringify({ propertyId }),
+    }),
+};
