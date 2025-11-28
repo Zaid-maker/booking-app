@@ -138,6 +138,25 @@ function PropertyDetail() {
     }
   };
 
+  const handleBuyNow = async () => {
+    if (!isAuthenticated) {
+      toast.warning('Please login to purchase property');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setBookingLoading(true);
+      const data = await paymentsAPI.createPaymentIntent(id);
+      setClientSecret(data.clientSecret);
+      setIsPaymentModalOpen(true);
+    } catch (error) {
+      toast.error(error.message || 'Failed to initiate purchase');
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
   const calculateNights = () => {
     if (bookingData.checkIn && bookingData.checkOut) {
       const start = new Date(bookingData.checkIn);
