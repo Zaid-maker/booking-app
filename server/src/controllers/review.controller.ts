@@ -134,7 +134,8 @@ export const getUserReviews = async (c: Context) => {
       .populate('property', 'name location images')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     const total = await Review.countDocuments({ user: userId });
 

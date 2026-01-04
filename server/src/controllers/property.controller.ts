@@ -51,7 +51,9 @@ export const getPropertyById = async (c: Context) => {
   try {
     const { id } = c.req.param();
 
-    const property = await Property.findById(id).populate('host', 'firstName lastName email');
+    const property = await Property.findById(id)
+      .populate('host', 'firstName lastName email')
+      .lean();
 
     if (!property) {
       return c.json({ error: 'Property not found' }, 404);

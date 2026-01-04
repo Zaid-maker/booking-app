@@ -61,6 +61,7 @@ const bookingSchema = new Schema<IBooking>(
 
 // Index for querying bookings
 bookingSchema.index({ user: 1, status: 1, createdAt: -1 });
-bookingSchema.index({ property: 1, checkIn: 1, checkOut: 1 });
+// Optimized index for overlap checking: property + status + dates
+bookingSchema.index({ property: 1, status: 1, checkIn: 1, checkOut: 1 });
 
 export default mongoose.model<IBooking>('Booking', bookingSchema);

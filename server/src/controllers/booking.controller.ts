@@ -43,7 +43,7 @@ export const createBooking = async (c: Context) => {
       checkOut,
       guests,
       totalPrice,
-      status: 'pending',
+      status: 'confirmed',
     });
 
     const populatedBooking = await Booking.findById(booking._id)
@@ -77,18 +77,18 @@ export const getUserBookings = async (c: Context) => {
 
     const bookings = await Booking.find(query)
       .populate('property', 'name location images price')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    // Check if each booking has been reviewed
-    const bookingsWithReviewStatus = await Promise.all(
-      bookings.map(async (booking) => {
-        const review = await Review.findOne({ booking: booking._id });
-        return {
-          ...booking.toObject(),
-          hasReview: !!review,
-        };
-      })
-    );
+    // Fetch reviews for these bookings efficiently
+    const bookingIds = bookings.map(b => b._id);
+    const reviews = await Review.find({ booking: { $in: bookingIds } }).select('booking').lean();
+    const reviewedBookingIds = new Set(reviews.map(r => r.booking.toString()));
+
+    const bookingsWithReviewStatus = bookings.map((booking) => ({
+      ...booking,
+      hasReview: reviewedBookingIds.has(booking._id.toString()),
+    }));
 
     return c.json({
       count: bookingsWithReviewStatus.length,
@@ -108,7 +108,8 @@ export const getBookingById = async (c: Context) => {
 
     const booking = await Booking.findById(id)
       .populate('property', 'name location images price amenities')
-      .populate('user', 'firstName lastName email');
+      .populate('user', 'firstName lastName email')
+      .lean();
 
     if (!booking) {
       return c.json({ error: 'Booking not found' }, 404);

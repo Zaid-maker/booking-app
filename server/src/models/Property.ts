@@ -105,5 +105,17 @@ const propertySchema = new Schema<IProperty>(
 
 // Index for search and filtering
 propertySchema.index({ location: 1, price: 1, rating: -1, type: 1 });
+propertySchema.index({ price: 1 });
+propertySchema.index({ beds: 1 });
+propertySchema.index({ amenities: 1 });
+propertySchema.index({ available: 1 });
+propertySchema.index({ host: 1 });
+
+// Text index for full text search
+propertySchema.index({ 
+  name: 'text', 
+  description: 'text', 
+  location: 'text' 
+});
 
 export default mongoose.model<IProperty>('Property', propertySchema);
