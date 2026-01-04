@@ -1,4 +1,4 @@
-import { Context } from 'hono';
+import type { Context } from 'hono';
 import Review from '../models/Review';
 import Booking from '../models/Booking';
 import Property from '../models/Property';
